@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>门电路模拟器</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="toolbox">
+            <div class="author-info">
+                <h4>门电路模拟器</h4>
+                <h4>by ZhengTuo 24320131</h4>
+                <h4>lhctuotuo@126.com</h4>
+            </div>
+            <h3>组件库</h3>
+            <div class="gate-item" draggable="true" data-type="AND">AND门</div>
+            <div class="gate-item" draggable="true" data-type="OR">OR门</div>
+            <div class="gate-item" draggable="true" data-type="NOT">NOT门</div>
+            <div class="gate-item" draggable="true" data-type="INPUT">输入值</div>
+            <div class="gate-item" draggable="true" data-type="OUTPUT">输出值</div>
+
+            <h3 class="legend-title">图例说明</h3>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-symbol">&</div>
+                    <div class="legend-text">与门 (AND)</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-symbol">≥1</div>
+                    <div class="legend-text">或门 (OR)</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-symbol">1</div>
+                    <div class="legend-text">非门 (NOT)</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color green"></div>
+                    <div class="legend-text">输入/输出为1</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color red"></div>
+                    <div class="legend-text">输入/输出为0</div>
+                </div>
+            </div>
+
+            <div class="trash-container" id="trashZone">
+                <div class="trash-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                    </svg>
+                </div>
+                <div class="trash-text">拖放此处删除组件</div>
+            </div>
+        </div>
+        <div class="canvas-container">
+            <canvas id="circuitCanvas"></canvas>
+        </div>
+    </div>
+
+    <script src="js/circuit.js"></script>
+</body>
+</html>
