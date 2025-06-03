@@ -1,0 +1,173 @@
+.container {
+    display: flex;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+.toolbox {
+    width: 200px; /* 增加宽度 */
+    min-width: 200px; /* 确保最小宽度 */
+    padding: 20px;
+    background-color: #f5f5f5;
+    border-right: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* 增加间距 */
+}
+
+.gate-item {
+    padding: 12px; /* 增加内部padding */
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    font-size: 14px; /* 调整字体大小 */
+    transition: background-color 0.2s;
+}
+
+.gate-item:hover {
+    background-color: #e6e6e6;
+}
+
+.canvas-container {
+    flex: 1;
+    background-color: #fff;
+    position: relative;
+}
+
+#circuitCanvas {
+    width: 100%;
+    height: 100%;
+    background-color: #ffffff;
+    background-image: radial-gradient(#e0e0e0 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+.legend-title {
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+
+.legend {
+    padding: 10px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 10px;
+}
+
+.legend-symbol {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+}
+
+.legend-color.green {
+    background-color: #4CAF50;
+}
+
+.legend-color.red {
+    background-color: #f44336;
+}
+
+.legend-text {
+    font-size: 14px;
+}
+
+.trash-container {
+    margin-top: auto;
+    padding: 15px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    text-align: center;
+    transition: all 0.3s ease;
+    margin: 20px 10px;
+    background: #f5f5f5;
+    z-index: 100;
+}
+
+.trash-container.active {
+    border-color: #ff4444;
+    background-color: rgba(255, 68, 68, 0.1);
+    transform: scale(1.05);
+}
+
+.trash-icon {
+    color: #666;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+}
+
+.trash-container.active .trash-icon {
+    color: #ff4444;
+    transform: scale(1.2);
+}
+
+.trash-text {
+    font-size: 12px;
+    color: #666;
+}
+
+.trash-container.active .trash-text {
+    color: #ff4444;
+}
+
+@keyframes delete-effect {
+    0% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(0.3) rotate(45deg);
+        opacity: 0;
+    }
+}
+
+.deleting {
+    animation: delete-effect 0.3s ease-out forwards;
+    pointer-events: none;
+}
+
+#dragGhost {
+    pointer-events: none;
+    position: fixed;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    font-family: Arial;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.author-info {
+    padding: 10px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #ddd;
+}
+
+.author-info h4 {
+    margin: 5px 0;
+    color: #333;
+    font-size: 14px;
+}
+
+.author-info h4:first-child {
+    font-size: 16px;
+    color: #000;
+}
