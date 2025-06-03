@@ -1,18 +1,15 @@
 class Circuit {
     constructor() {
         this.canvas = document.getElementById('circuitCanvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.components = [];
+        this.ctx = this.canvas.getContext('2d');        this.components = [];
         this.wires = [];
         this.selectedComponent = null;
         this.dragging = false;
         this.wireStart = null;
-        this.socket = io();
         this.selectedWire = null;
 
         this.initializeCanvas();
         this.setupEventListeners();
-        this.setupSocketListeners();
         this.setupKeyboardEvents();
         this.setupTrashZone();
     }
@@ -29,11 +26,10 @@ class Circuit {
     }
 
     setupEventListeners() {
-        // 组件拖拽
-        const gateItems = document.querySelectorAll('.gate-item');
+        // 组件拖拽        const gateItems = document.querySelectorAll('.gate-item');
         gateItems.forEach(item => {
             item.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('type', item.dataset.type);
+                e.dataTransfer.setData('text/plain', item.dataset.type);
             });
         });
 
@@ -44,7 +40,7 @@ class Circuit {
 
         this.canvas.addEventListener('drop', (e) => {
             e.preventDefault();
-            const type = e.dataTransfer.getData('type');
+            const type = e.dataTransfer.getData('text/plain');
             const rect = this.canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
@@ -71,15 +67,7 @@ class Circuit {
         this.canvas.addEventListener('mouseup', () => {
             this.handleMouseUp();
         });
-    }
-
-    setupSocketListeners() {
-        this.socket.on('circuit_state', (data) => {
-            this.updateCircuitState(data);
-        });
-    }
-
-    setupKeyboardEvents() {
+    }    setupKeyboardEvents() {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (this.selectedComponent) {
