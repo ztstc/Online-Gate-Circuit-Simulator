@@ -93,26 +93,32 @@ class Circuit {
                 }
             }
         });
-    }
-
-    setupTrashZone() {
+    }    setupTrashZone() {
         const trashZone = document.getElementById('trashZone');
 
         this.canvas.addEventListener('dragstart', (e) => {
             if (this.selectedComponent) {
-                trashZone.classList.add('active');
-                // 阻止画布默认拖拽行为
                 e.stopPropagation();
             }
         });
 
         this.canvas.addEventListener('dragend', () => {
+            const dragGhost = document.getElementById('dragGhost');
+            if (dragGhost && dragGhost.parentNode) {
+                dragGhost.parentNode.removeChild(dragGhost);
+            }
             trashZone.classList.remove('active');
         });
 
         trashZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
+            trashZone.classList.add('active');
+        });
+
+        trashZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            trashZone.classList.remove('active');
         });
 
         trashZone.addEventListener('drop', (e) => {
@@ -128,6 +134,11 @@ class Circuit {
                     this.deleteComponent(component);
                     trashZone.classList.remove('active');
                 }, 300);
+            }
+            // 确保删除拖拽时的虚影
+            const dragGhost = document.getElementById('dragGhost');
+            if (dragGhost && dragGhost.parentNode) {
+                dragGhost.parentNode.removeChild(dragGhost);
             }
         });
     }
@@ -382,59 +393,66 @@ class Circuit {
             }
         }
         return null;
-    }
-
-    connectWire(endPort) {
-        if (this.wireStart && endPort) {
-            // 检查是否试图连接同一个组件的端口
-            if (this.wireStart.component === endPort.component) {
-                return;
-            }
-            
-            // 移除可能存在的旧连接
-            this.wires = this.wires.filter(wire => {
-                return !(wire.end.component === endPort.component && 
-                        wire.end.inputIndex === endPort.index);
-            });
-            
-            // 检查连接类型是否正确（输出到输入）
-            if (this.wireStart.type === 'output' && endPort.type === 'input') {
-                this.wires.push({
-                    start: {
-                        component: this.wireStart.component,
-                        x: this.wireStart.x,
-                        y: this.wireStart.y
-                    },
-                    end: {
-                        component: endPort.component,
-                        x: endPort.x,
-                        y: endPort.y,
-                        inputIndex: endPort.index
-                    }
-                });
-            } else if (this.wireStart.type === 'input' && endPort.type === 'output') {
-                this.wires.push({
-                    start: {
-                        component: endPort.component,
-                        x: endPort.x,
-                        y: endPort.y
-                    },
-                    end: {
-                        component: this.wireStart.component,
-                        x: this.wireStart.x,
-                        y: this.wireStart.y,
-                        inputIndex: this.wireStart.index
-                    }
-                });
-            }
-            
-            // 立即计算新状态
-            this.calculateCircuitState();
+    }    connectWire(endPort) {
+        if (!this.wireStart || !endPort) {
+            this.wireStart = null;
+            this.tempWireEnd = null;
             this.draw();
-            this.emitCircuitUpdate();
+            return;
         }
+
+        // 检查是否试图连接同一个组件的端口
+        if (this.wireStart.component === endPort.component) {
+            this.wireStart = null;
+            this.tempWireEnd = null;
+            this.draw();
+            return;
+        }
+        
+        // 移除可能存在的旧连接
+        this.wires = this.wires.filter(wire => {
+            return !(wire.end.component === endPort.component && 
+                    wire.end.inputIndex === endPort.index);
+        });
+        
+        // 检查连接类型是否正确（输出到输入）
+        if (this.wireStart.type === 'output' && endPort.type === 'input') {
+            this.wires.push({
+                start: {
+                    component: this.wireStart.component,
+                    x: this.wireStart.x,
+                    y: this.wireStart.y
+                },
+                end: {
+                    component: endPort.component,
+                    x: endPort.x,
+                    y: endPort.y,
+                    inputIndex: endPort.index
+                }
+            });
+        } else if (this.wireStart.type === 'input' && endPort.type === 'output') {
+            this.wires.push({
+                start: {
+                    component: endPort.component,
+                    x: endPort.x,
+                    y: endPort.y
+                },
+                end: {
+                    component: this.wireStart.component,
+                    x: this.wireStart.x,
+                    y: this.wireStart.y,
+                    inputIndex: this.wireStart.index
+                }
+            });
+        }
+        
+        // 清理连线状态
         this.wireStart = null;
         this.tempWireEnd = null;
+        
+        // 更新状态和显示
+        this.calculateCircuitState();
+        this.draw();
     }    draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
