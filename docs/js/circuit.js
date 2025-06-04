@@ -27,13 +27,27 @@ class Circuit {
     }
 
     setupEventListeners() {
-        // 组件拖拽
-        const gateItems = document.querySelectorAll('.gate-item');
+        // 组件拖拽        const gateItems = document.querySelectorAll('.gate-item');
         gateItems.forEach(item => {
             item.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('type', item.dataset.type);
+                e.dataTransfer.effectAllowed = 'copy';
+                
+                // 创建拖拽时的预览图像
+                const dragIcon = document.createElement('div');
+                dragIcon.className = 'gate-item';
+                dragIcon.textContent = item.textContent;
+                dragIcon.style.backgroundColor = '#fff';
+                dragIcon.style.border = '1px solid #000';
+                dragIcon.style.width = '40px';
+                dragIcon.style.height = '40px';
+                dragIcon.style.lineHeight = '40px';
+                dragIcon.style.textAlign = 'center';
+                document.body.appendChild(dragIcon);
+                e.dataTransfer.setDragImage(dragIcon, 20, 20);
+                setTimeout(() => document.body.removeChild(dragIcon), 0);
             });
-        });        // 画布事件
+        });// 画布事件
         this.canvas.addEventListener('dragover', (e) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'copy';  // 显示可以放置的光标
