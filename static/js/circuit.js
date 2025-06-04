@@ -9,6 +9,8 @@ class Circuit {
         this.wireStart = null;
         this.socket = io();
         this.selectedWire = null;
+        this.isConnected = false;
+        this.isUpdating = false; // 新增标志位，避免循环更新
 
         this.initializeCanvas();
         this.setupEventListeners();
@@ -74,8 +76,20 @@ class Circuit {
     }
 
     setupSocketListeners() {
+        this.socket.on('connect', () => {
+            console.log('Connected to server');
+            this.isConnected = true;
+        });
+
+        this.socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            this.isConnected = false;
+        });
+
         this.socket.on('circuit_state', (data) => {
-            this.updateCircuitState(data);
+            if (data.components && data.wires) {
+                this.updateCircuitState(data);
+            }
         });
     }
 
@@ -218,6 +232,12 @@ class Circuit {
     }
 
     startDragging(component, x, y) {
+        // 清理可能存在的旧虚影
+        const oldGhost = document.getElementById('dragGhost');
+        if (oldGhost) {
+            oldGhost.remove();
+        }
+
         // 创建一个可视化的拖拽元素
         const dragElement = document.createElement('div');
         dragElement.id = 'dragGhost';
@@ -226,6 +246,7 @@ class Circuit {
         dragElement.style.height = '40px';
         dragElement.style.pointerEvents = 'none';
         dragElement.style.zIndex = '1000';
+        dragElement.style.transition = 'none'; // 禁用过渡动画
         
         if (component.type === 'INPUT' || component.type === 'OUTPUT') {
             dragElement.style.borderRadius = '50%';
@@ -244,22 +265,28 @@ class Circuit {
 
         // 更新拖拽元素位置
         const updateDragPosition = (e) => {
-            dragElement.style.left = e.clientX - 20 + 'px';
-            dragElement.style.top = e.clientY - 20 + 'px';
+            const rect = this.canvas.getBoundingClientRect();
+            const mouseX = e.clientX || (x + rect.left);
+            const mouseY = e.clientY || (y + rect.top);
+            dragElement.style.left = (mouseX - 20) + 'px';
+            dragElement.style.top = (mouseY - 20) + 'px';
         };
 
         // 添加移动和结束拖拽的事件监听器
         const handleDragMove = (e) => {
-            updateDragPosition(e);
-            const trashZone = document.getElementById('trashZone');
-            const trashRect = trashZone.getBoundingClientRect();
-            
-            if (e.clientX >= trashRect.left && e.clientX <= trashRect.right &&
-                e.clientY >= trashRect.top && e.clientY <= trashRect.bottom) {
-                trashZone.classList.add('active');
-            } else {
-                trashZone.classList.remove('active');
-            }
+            e.preventDefault(); // 防止默认拖拽行为
+            requestAnimationFrame(() => { // 使用 requestAnimationFrame 优化性能
+                updateDragPosition(e);
+                const trashZone = document.getElementById('trashZone');
+                const trashRect = trashZone.getBoundingClientRect();
+                
+                if (e.clientX >= trashRect.left && e.clientX <= trashRect.right &&
+                    e.clientY >= trashRect.top && e.clientY <= trashRect.bottom) {
+                    trashZone.classList.add('active');
+                } else {
+                    trashZone.classList.remove('active');
+                }
+            });
         };
 
         const handleDragEnd = (e) => {
@@ -268,20 +295,27 @@ class Circuit {
             
             if (e.clientX >= trashRect.left && e.clientX <= trashRect.right &&
                 e.clientY >= trashRect.top && e.clientY <= trashRect.bottom) {
-                // 删除组件
-                this.deleteComponent(component);
+                // 创建删除动画
+                this.createDeleteAnimation(component);
+                // 延迟删除组件
+                setTimeout(() => {
+                    this.deleteComponent(component);
+                }, 300);
             }
 
             // 清理
             document.removeEventListener('mousemove', handleDragMove);
             document.removeEventListener('mouseup', handleDragEnd);
-            document.body.removeChild(dragElement);
+            dragElement.remove();
             trashZone.classList.remove('active');
         };
 
         document.addEventListener('mousemove', handleDragMove);
         document.addEventListener('mouseup', handleDragEnd);
-        updateDragPosition({ clientX: x, clientY: y });
+        
+        // 立即设置初始位置
+        const rect = this.canvas.getBoundingClientRect();
+        updateDragPosition({ clientX: x + rect.left, clientY: y + rect.top });
     }
 
     handleMouseMove(x, y) {
@@ -324,10 +358,16 @@ class Circuit {
             const endPort = this.findPortAt(this.tempWireEnd.x, this.tempWireEnd.y);
             this.connectWire(endPort);
         }
+
+        // 清理虚影元素
+        const dragGhost = document.getElementById('dragGhost');
+        if (dragGhost) {
+            dragGhost.remove();
+        }
+
         this.dragging = false;
         this.selectedComponent = null;
         this.tempWireEnd = null;
-        // 删除这行，不再设置画布的 draggable 属性
         this.emitCircuitUpdate();
     }
 
@@ -712,50 +752,46 @@ class Circuit {
         return result;
     }
 
-    emitCircuitUpdate() {
-        this.calculateCircuitState(); // 在发送更新前计算电路状态
-        this.socket.emit('circuit_update', {
-            components: this.components,
-            wires: this.wires
-        });
+    updateCircuitState(data) {
+        // 避免本地更新时的循环
+        if (!this.isUpdating) {
+            this.isUpdating = true;
+            
+            // 更新组件
+            this.components = data.components.map(newComp => {
+                const existingComp = this.components.find(comp => 
+                    comp.x === newComp.x && 
+                    comp.y === newComp.y && 
+                    comp.type === newComp.type
+                );
+                return existingComp || newComp;
+            });
+            
+            // 更新连线
+            this.wires = data.wires.map(wire => {
+                const existingWire = this.wires.find(w => 
+                    w.start.x === wire.start.x && 
+                    w.start.y === wire.start.y && 
+                    w.end.x === wire.end.x && 
+                    w.end.y === wire.end.y
+                );
+                return existingWire || wire;
+            });
+            
+            this.calculateCircuitState();
+            this.draw();
+            
+            this.isUpdating = false;
+        }
     }
 
-    updateCircuitState(data) {
-        // 深度复制组件状态
-        const componentMap = new Map();
-        this.components.forEach(comp => componentMap.set(comp, comp));
-        
-        data.components.forEach(newComp => {
-            const existingComp = this.components.find(c => 
-                c.type === newComp.type && 
-                c.x === newComp.x && 
-                c.y === newComp.y
-            );
-            if (existingComp) {
-                existingComp.state = newComp.state;
-            }
-        });
-        
-        // 更新线路并保持引用
-        this.wires = data.wires.map(wire => {
-            const start = this.components.find(c => 
-                c.type === wire.start.component.type && 
-                c.x === wire.start.component.x && 
-                c.y === wire.start.component.y
-            );
-            const end = this.components.find(c => 
-                c.type === wire.end.component.type && 
-                c.x === wire.end.component.x && 
-                c.y === wire.end.component.y
-            );
-            return {
-                start: { ...wire.start, component: start },
-                end: { ...wire.end, component: end }
-            };
-        });
-        
-        this.calculateCircuitState();
-        this.draw();
+    emitCircuitUpdate() {
+        if (this.isConnected && !this.isUpdating) {
+            this.socket.emit('circuit_update', {
+                components: this.components,
+                wires: this.wires
+            });
+        }
     }
 
     deleteComponent(component) {
