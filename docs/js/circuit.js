@@ -257,39 +257,10 @@ class Circuit {
             dragElement.style.justifyContent = 'center';
             dragElement.innerText = component.type === 'AND' ? '&' : 
                                   component.type === 'OR' ? '≥1' : '1';
-        }        document.body.appendChild(dragElement);
-
-        const updateDragPosition = (e) => {
+        }        document.body.appendChild(dragElement);        const updateDragPosition = (e) => {
             const rect = this.canvas.getBoundingClientRect();
-            const canvasX = e.clientX - rect.left;
-            const canvasY = e.clientY - rect.top;
-            
-            // 更新虚影位置
-            dragElement.style.left = e.clientX - 20 + 'px';
-            dragElement.style.top = e.clientY - 20 + 'px';
-
-            // 更新实际组件位置
-            if (this.selectedComponent) {
-                const dx = canvasX - this.selectedComponent.x;
-                const dy = canvasY - this.selectedComponent.y;
-                
-                this.selectedComponent.x = canvasX;
-                this.selectedComponent.y = canvasY;
-                
-                // 更新与该组件相关的所有线的位置
-                this.wires.forEach(wire => {
-                    if (wire.start.component === this.selectedComponent) {
-                        wire.start.x += dx;
-                        wire.start.y += dy;
-                    }
-                    if (wire.end.component === this.selectedComponent) {
-                        wire.end.x += dx;
-                        wire.end.y += dy;
-                    }
-                });
-                
-                this.draw(); // 确保实时更新组件位置
-            }
+            dragElement.style.left = (e.clientX - 20) + 'px';
+            dragElement.style.top = (e.clientY - 20) + 'px';
         };
 
         const handleDragMove = (e) => {
@@ -336,11 +307,12 @@ class Circuit {
         if (this.dragging && this.selectedComponent) {
             const dx = x - this.selectedComponent.x;
             const dy = y - this.selectedComponent.y;
-            
+
+            // 更新组件位置
             this.selectedComponent.x = x;
             this.selectedComponent.y = y;
-            
-            // 更新与该组件相关的所有线的位置
+
+            // 更新连接线位置
             this.wires.forEach(wire => {
                 if (wire.start.component === this.selectedComponent) {
                     wire.start.x += dx;
@@ -351,7 +323,15 @@ class Circuit {
                     wire.end.y += dy;
                 }
             });
-            
+
+            // 更新虚影位置
+            const dragGhost = document.getElementById('dragGhost');
+            if (dragGhost) {
+                const rect = this.canvas.getBoundingClientRect();
+                dragGhost.style.left = (x + rect.left - 20) + 'px';
+                dragGhost.style.top = (y + rect.top - 20) + 'px';
+            }
+
             this.draw();
         } else if (this.wireStart) {
             this.tempWireEnd = { x, y };
