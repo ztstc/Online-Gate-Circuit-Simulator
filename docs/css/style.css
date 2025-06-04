@@ -17,18 +17,30 @@
 }
 
 .gate-item {
-    padding: 12px; /* 增加内部padding */
+    padding: 12px;
     background-color: white;
     border: 1px solid #ccc;
     border-radius: 4px;
-    cursor: pointer;
+    cursor: grab;
     text-align: center;
-    font-size: 14px; /* 调整字体大小 */
-    transition: background-color 0.2s;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    margin: 5px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .gate-item:hover {
-    background-color: #e6e6e6;
+    background-color: #f0f0f0;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.gate-item:active {
+    cursor: grabbing;
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .canvas-container {

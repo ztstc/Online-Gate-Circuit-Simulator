@@ -12,40 +12,55 @@ class Circuit {
         this.setupEventListeners();
         this.setupKeyboardEvents();
         this.setupTrashZone();
-    }
-
-    initializeCanvas() {
+    }    initializeCanvas() {
         const resizeCanvas = () => {
             const container = this.canvas.parentElement;
             this.canvas.width = container.clientWidth;
             this.canvas.height = container.clientHeight;
+            this.draw(); // 确保在调整大小后重绘
         };
 
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
-    }
-
-    setupEventListeners() {
-        // 组件拖拽        const gateItems = document.querySelectorAll('.gate-item');
+    }    setupEventListeners() {
+        // 组件拖拽
+        const gateItems = document.querySelectorAll('.gate-item');
         gateItems.forEach(item => {
             item.addEventListener('dragstart', (e) => {
+                console.log('Drag start:', item.dataset.type); // 添加日志
                 e.dataTransfer.setData('text/plain', item.dataset.type);
+                e.dataTransfer.effectAllowed = 'copy';
             });
         });
 
         // 画布事件
+        this.canvas.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            this.canvas.style.backgroundColor = '#f0f0f0'; // 视觉反馈
+        });
+
+        this.canvas.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            this.canvas.style.backgroundColor = '#ffffff';
+        });
+
         this.canvas.addEventListener('dragover', (e) => {
             e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
         });
 
         this.canvas.addEventListener('drop', (e) => {
             e.preventDefault();
+            this.canvas.style.backgroundColor = '#ffffff';
             const type = e.dataTransfer.getData('text/plain');
-            const rect = this.canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            console.log('Drop:', type); // 添加日志
             
-            this.addComponent(type, x, y);
+            if (type) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                this.addComponent(type, x, y);
+            }
         });
 
         this.canvas.addEventListener('mousedown', (e) => {
