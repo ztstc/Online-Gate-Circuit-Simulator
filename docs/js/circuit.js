@@ -257,7 +257,9 @@ class Circuit {
             dragElement.style.justifyContent = 'center';
             dragElement.innerText = component.type === 'AND' ? '&' : 
                                   component.type === 'OR' ? '≥1' : '1';
-        }        document.body.appendChild(dragElement);        const updateDragPosition = (e) => {
+        }        document.body.appendChild(dragElement);
+
+        const updateDragPosition = (e) => {
             const rect = this.canvas.getBoundingClientRect();
             dragElement.style.left = (e.clientX - 20) + 'px';
             dragElement.style.top = (e.clientY - 20) + 'px';
@@ -308,11 +310,9 @@ class Circuit {
             const dx = x - this.selectedComponent.x;
             const dy = y - this.selectedComponent.y;
 
-            // 更新组件位置
             this.selectedComponent.x = x;
             this.selectedComponent.y = y;
 
-            // 更新连接线位置
             this.wires.forEach(wire => {
                 if (wire.start.component === this.selectedComponent) {
                     wire.start.x += dx;
@@ -324,7 +324,6 @@ class Circuit {
                 }
             });
 
-            // 更新虚影位置
             const dragGhost = document.getElementById('dragGhost');
             if (dragGhost) {
                 const rect = this.canvas.getBoundingClientRect();
@@ -354,92 +353,6 @@ class Circuit {
         this.cleanupDragging();
     }
 
-    // ... 其余方法保持不变 ...
-
-    calculateCircuitState() {
-        this.components.forEach(component => {
-            if (component.type !== 'INPUT') {
-                component.state = null;
-            }
-        });
-
-        const processed = new Set();
-        const stack = [...this.components.filter(c => c.type === 'INPUT')];
-        
-        while (stack.length > 0) {
-            const current = stack.pop();
-            if (processed.has(current)) continue;
-            
-            const outputs = this.wires
-                .filter(w => w.start.component === current)
-                .map(w => w.end.component);
-                
-            for (const output of outputs) {
-                const state = this.calculateComponentState(output);
-                if (state !== null) {
-                    output.state = state;
-                    stack.push(output);
-                }
-            }
-            
-            processed.add(current);
-        }
-    }
-
-    calculateComponentState(component) {
-        if (component.type === 'INPUT') {
-            return component.state;
-        }
-
-        const inputs = [];
-        this.wires.forEach(wire => {
-            if (wire.end.component === component) {
-                inputs[wire.end.inputIndex] = wire.start.component.state;
-            }
-        });
-        
-        switch (component.type) {
-            case 'AND':
-                return inputs.length === 2 && inputs[0] !== null && inputs[1] !== null ? 
-                       (inputs[0] && inputs[1]) : null;
-            case 'OR':
-                return inputs.length === 2 && inputs[0] !== null && inputs[1] !== null ? 
-                       (inputs[0] || inputs[1]) : null;
-            case 'NOT':
-                return inputs.length === 1 && inputs[0] !== null ? 
-                       !inputs[0] : null;
-            case 'OUTPUT':
-                return inputs.length === 1 && inputs[0] !== null ? 
-                       inputs[0] : null;
-            default:
-                return null;
-        }
-    }
-
-    deleteComponent(component) {
-        this.wires = this.wires.filter(wire => 
-            wire.start.component !== component && 
-            wire.end.component !== component
-        );
-        
-        const index = this.components.indexOf(component);
-        if (index > -1) {
-            this.components.splice(index, 1);
-        }
-        
-        this.selectedComponent = null;
-        this.draw();
-    }
-
-    deleteWire(wire) {
-        const index = this.wires.indexOf(wire);
-        if (index > -1) {
-            this.wires.splice(index, 1);
-        }
-        this.selectedWire = null;
-        this.draw();
-    }
-
     findComponentAt(x, y) {
         return this.components.find(component => {
             const dx = x - component.x;
@@ -451,6 +364,7 @@ class Circuit {
     findPortAt(x, y) {
         for (const component of this.components) {
             if (component.type !== 'INPUT') {
+                // 检查输入端口
                 if (component.type === 'NOT') {
                     const portX = component.x - 25;
                     const portY = component.y;
@@ -475,6 +389,7 @@ class Circuit {
             }
 
             if (component.type !== 'OUTPUT') {
+                // 检查输出端口
                 const outPortX = component.x + 25;
                 const outPortY = component.y;
                 if (Math.hypot(x - outPortX, y - outPortY) < 5) {
@@ -728,6 +643,90 @@ class Circuit {
             
             return distance < 5;
         });
+    }
+
+    calculateCircuitState() {
+        this.components.forEach(component => {
+            if (component.type !== 'INPUT') {
+                component.state = null;
+            }
+        });
+
+        const processed = new Set();
+        const stack = [...this.components.filter(c => c.type === 'INPUT')];
+        
+        while (stack.length > 0) {
+            const current = stack.pop();
+            if (processed.has(current)) continue;
+            
+            const outputs = this.wires
+                .filter(w => w.start.component === current)
+                .map(w => w.end.component);
+                
+            for (const output of outputs) {
+                const state = this.calculateComponentState(output);
+                if (state !== null) {
+                    output.state = state;
+                    stack.push(output);
+                }
+            }
+            
+            processed.add(current);
+        }
+    }
+
+    calculateComponentState(component) {
+        if (component.type === 'INPUT') {
+            return component.state;
+        }
+
+        const inputs = [];
+        this.wires.forEach(wire => {
+            if (wire.end.component === component) {
+                inputs[wire.end.inputIndex] = wire.start.component.state;
+            }
+        });
+        
+        switch (component.type) {
+            case 'AND':
+                return inputs.length === 2 && inputs[0] !== null && inputs[1] !== null ? 
+                       (inputs[0] && inputs[1]) : null;
+            case 'OR':
+                return inputs.length === 2 && inputs[0] !== null && inputs[1] !== null ? 
+                       (inputs[0] || inputs[1]) : null;
+            case 'NOT':
+                return inputs.length === 1 && inputs[0] !== null ? 
+                       !inputs[0] : null;
+            case 'OUTPUT':
+                return inputs.length === 1 && inputs[0] !== null ? 
+                       inputs[0] : null;
+            default:
+                return null;
+        }
+    }
+
+    deleteComponent(component) {
+        this.wires = this.wires.filter(wire => 
+            wire.start.component !== component && 
+            wire.end.component !== component
+        );
+        
+        const index = this.components.indexOf(component);
+        if (index > -1) {
+            this.components.splice(index, 1);
+        }
+        
+        this.selectedComponent = null;
+        this.draw();
+    }
+
+    deleteWire(wire) {
+        const index = this.wires.indexOf(wire);
+        if (index > -1) {
+            this.wires.splice(index, 1);
+        }
+        this.selectedWire = null;
+        this.draw();
     }
 }
 
