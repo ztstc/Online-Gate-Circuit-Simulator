@@ -299,71 +299,6 @@ class Circuit {
         }, 2000);
     }
 
-    handleMouseMove(x, y) {
-        if (this.dragging && this.dragTarget) {
-            const newX = x - this.dragOffsetX;
-            const newY = y - this.dragOffsetY;
-            
-            // 更新组件位置
-            this.dragTarget.x = newX;
-            this.dragTarget.y = newY;
-            
-            // 更新连线位置
-            this.wires.forEach(wire => {
-                if (wire.start.component === this.dragTarget) {
-                    if (wire.start.component.type === 'INPUT') {
-                        wire.start.x = newX + 19;
-                        wire.start.y = newY;
-                    } else {
-                        wire.start.x = newX + 25;
-                        wire.start.y = newY;
-                    }
-                }
-                if (wire.end.component === this.dragTarget) {
-                    if (wire.end.component.type === 'OUTPUT') {
-                        wire.end.x = newX - 19;
-                        wire.end.y = newY;
-                    } else if (wire.end.component.type === 'NOT') {
-                        wire.end.x = newX - 25;
-                        wire.end.y = newY;
-                    } else {
-                        wire.end.x = newX - 25;
-                        wire.end.y = newY + (wire.end.inputIndex === 0 ? -15 : 15);
-                    }
-                }
-            });
-            
-            this.draw();
-        } else if (this.wireStart) {
-            this.tempWireEnd = { x, y };
-            this.draw();
-            
-            const port = this.findPortAt(x, y);
-            this.canvas.style.cursor = port ? 'pointer' : 'crosshair';
-        } else {
-            const port = this.findPortAt(x, y);
-            const wire = this.findWireAt(x, y);
-            this.canvas.style.cursor = port || wire ? 'pointer' : 'default';
-        }
-    }
-
-    handleMouseUp() {
-        if (this.wireStart && this.tempWireEnd) {
-            const endPort = this.findPortAt(this.tempWireEnd.x, this.tempWireEnd.y);
-            this.connectWire(endPort);
-        }
-
-        // 清理虚影元素
-        const dragGhost = document.getElementById('dragGhost');
-        if (dragGhost) {
-            dragGhost.remove();
-        }
-
-        this.dragging = false;
-        this.selectedComponent = null;
-        this.tempWireEnd = null;
-    }
-
     findComponentAt(x, y) {
         return this.components.find(component => {
             const dx = x - component.x;
@@ -412,6 +347,96 @@ class Circuit {
             }
         }
         return null;
+    }
+
+    findWireAt(x, y) {
+        return this.wires.find(wire => {
+            const dx = wire.end.x - wire.start.x;
+            const dy = wire.end.y - wire.start.y;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            
+            // 计算点到线段的距离
+            const dot = ((x - wire.start.x) * dx + (y - wire.start.y) * dy) / (length * length);
+            if (dot < 0 || dot > 1) return false;
+            
+            const closestX = wire.start.x + dot * dx;
+            const closestY = wire.start.y + dot * dy;
+            const distance = Math.hypot(x - closestX, y - closestY);
+            
+            return distance < 5;
+        });
+    }
+
+    startDragging(component, x, y) {
+        // 清理可能存在的旧虚影
+        const oldGhost = document.getElementById('dragGhost');
+        if (oldGhost) {
+            oldGhost.remove();
+        }
+
+        this.dragging = true;
+        this.selectedComponent = component;
+        this.dragOffsetX = x - component.x;
+        this.dragOffsetY = y - component.y;
+    }
+
+    handleMouseMove(x, y) {
+        if (this.dragging && this.selectedComponent) {
+            const newX = x - this.dragOffsetX;
+            const newY = y - this.dragOffsetY;
+            
+            // 更新组件位置
+            this.selectedComponent.x = newX;
+            this.selectedComponent.y = newY;
+            
+            // 更新连线位置
+            this.wires.forEach(wire => {
+                if (wire.start.component === this.selectedComponent) {
+                    if (wire.start.component.type === 'INPUT') {
+                        wire.start.x = newX + 19;
+                        wire.start.y = newY;
+                    } else {
+                        wire.start.x = newX + 25;
+                        wire.start.y = newY;
+                    }
+                }
+                if (wire.end.component === this.selectedComponent) {
+                    if (wire.end.component.type === 'OUTPUT') {
+                        wire.end.x = newX - 19;
+                        wire.end.y = newY;
+                    } else if (wire.end.component.type === 'NOT') {
+                        wire.end.x = newX - 25;
+                        wire.end.y = newY;
+                    } else {
+                        wire.end.x = newX - 25;
+                        wire.end.y = newY + (wire.end.inputIndex === 0 ? -15 : 15);
+                    }
+                }
+            });
+            
+            this.draw();
+        } else if (this.wireStart) {
+            this.tempWireEnd = { x, y };
+            this.draw();
+            
+            const port = this.findPortAt(x, y);
+            this.canvas.style.cursor = port ? 'pointer' : 'crosshair';
+        } else {
+            const port = this.findPortAt(x, y);
+            const wire = this.findWireAt(x, y);
+            this.canvas.style.cursor = port || wire ? 'pointer' : 'default';
+        }
+    }
+
+    handleMouseUp() {
+        if (this.wireStart && this.tempWireEnd) {
+            const endPort = this.findPortAt(this.tempWireEnd.x, this.tempWireEnd.y);
+            this.connectWire(endPort);
+        }
+
+        this.dragging = false;
+        this.selectedComponent = null;
+        this.tempWireEnd = null;
     }
 
     draw() {
