@@ -257,9 +257,7 @@ class Circuit {
             dragElement.style.justifyContent = 'center';
             dragElement.innerText = component.type === 'AND' ? '&' : 
                                   component.type === 'OR' ? '≥1' : '1';
-        }
-
-        document.body.appendChild(dragElement);
+        }        document.body.appendChild(dragElement);
 
         const updateDragPosition = (e) => {
             const rect = this.canvas.getBoundingClientRect();
@@ -290,7 +288,7 @@ class Circuit {
                     }
                 });
                 
-                this.draw();
+                this.draw(); // 确保实时更新组件位置
             }
         };
 
