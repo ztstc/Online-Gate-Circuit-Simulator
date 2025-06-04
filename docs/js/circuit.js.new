@@ -133,21 +133,11 @@ class Circuit {
         if (dragGhost && dragGhost.parentNode) {
             dragGhost.parentNode.removeChild(dragGhost);
         }
-        
-        // 清理拖拽状态
-        if (this.selectedComponent) {
-            this.draw(); // 重新绘制以确保组件位置正确
-        }
-        
-        // 重置内部状态
+        const trashZone = document.getElementById('trashZone');
+        trashZone.classList.remove('active');
         this.dragging = false;
         this.selectedComponent = null;
-        
-        // 清理垃圾桶区域的激活状态
-        const trashZone = document.getElementById('trashZone');
-        if (trashZone) {
-            trashZone.classList.remove('active');
-        }
+        this.canvas.style.cursor = 'default';
     }
 
     createDeleteAnimation(component) {
@@ -262,36 +252,8 @@ class Circuit {
         document.body.appendChild(dragElement);
 
         const updateDragPosition = (e) => {
-            const rect = this.canvas.getBoundingClientRect();
-            const canvasX = e.clientX - rect.left;
-            const canvasY = e.clientY - rect.top;
-            
-            // 更新虚影位置
             dragElement.style.left = e.clientX - 20 + 'px';
             dragElement.style.top = e.clientY - 20 + 'px';
-
-            // 更新实际组件位置
-            if (this.selectedComponent) {
-                const dx = canvasX - this.selectedComponent.x;
-                const dy = canvasY - this.selectedComponent.y;
-                
-                this.selectedComponent.x = canvasX;
-                this.selectedComponent.y = canvasY;
-                
-                // 更新与该组件相关的所有线的位置
-                this.wires.forEach(wire => {
-                    if (wire.start.component === this.selectedComponent) {
-                        wire.start.x += dx;
-                        wire.start.y += dy;
-                    }
-                    if (wire.end.component === this.selectedComponent) {
-                        wire.end.x += dx;
-                        wire.end.y += dy;
-                    }
-                });
-                
-                this.draw();
-            }
         };
 
         const handleDragMove = (e) => {
