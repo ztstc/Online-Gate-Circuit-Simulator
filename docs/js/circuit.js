@@ -33,11 +33,10 @@ class Circuit {
             item.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('type', item.dataset.type);
             });
-        });
-
-        // 画布事件
+        });        // 画布事件
         this.canvas.addEventListener('dragover', (e) => {
             e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';  // 显示可以放置的光标
         });
 
         this.canvas.addEventListener('drop', (e) => {
