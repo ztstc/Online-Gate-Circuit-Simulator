@@ -1,7 +1,8 @@
 class Circuit {
     constructor() {
         this.canvas = document.getElementById('circuitCanvas');
-        this.ctx = this.canvas.getContext('2d');        this.components = [];
+        this.ctx = this.canvas.getContext('2d');
+        this.components = [];
         this.wires = [];
         this.selectedComponent = null;
         this.dragging = false;
@@ -12,7 +13,9 @@ class Circuit {
         this.setupEventListeners();
         this.setupKeyboardEvents();
         this.setupTrashZone();
-    }    initializeCanvas() {
+    }
+
+    initializeCanvas() {
         const resizeCanvas = () => {
             const container = this.canvas.parentElement;
             this.canvas.width = container.clientWidth;
@@ -22,12 +25,13 @@ class Circuit {
 
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
-    }    setupEventListeners() {
+    }
+
+    setupEventListeners() {
         // 组件拖拽
         const gateItems = document.querySelectorAll('.gate-item');
         gateItems.forEach(item => {
             item.addEventListener('dragstart', (e) => {
-                console.log('Drag start:', item.dataset.type); // 添加日志
                 e.dataTransfer.setData('text/plain', item.dataset.type);
                 e.dataTransfer.effectAllowed = 'copy';
             });
@@ -36,7 +40,7 @@ class Circuit {
         // 画布事件
         this.canvas.addEventListener('dragenter', (e) => {
             e.preventDefault();
-            this.canvas.style.backgroundColor = '#f0f0f0'; // 视觉反馈
+            this.canvas.style.backgroundColor = '#f0f0f0';
         });
 
         this.canvas.addEventListener('dragleave', (e) => {
@@ -53,7 +57,6 @@ class Circuit {
             e.preventDefault();
             this.canvas.style.backgroundColor = '#ffffff';
             const type = e.dataTransfer.getData('text/plain');
-            console.log('Drop:', type); // 添加日志
             
             if (type) {
                 const rect = this.canvas.getBoundingClientRect();
@@ -67,7 +70,6 @@ class Circuit {
             const rect = this.canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            
             this.handleMouseDown(x, y);
         });
 
@@ -75,14 +77,15 @@ class Circuit {
             const rect = this.canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            
             this.handleMouseMove(x, y);
         });
 
         this.canvas.addEventListener('mouseup', () => {
             this.handleMouseUp();
         });
-    }    setupKeyboardEvents() {
+    }
+
+    setupKeyboardEvents() {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (this.selectedComponent) {
@@ -91,24 +94,14 @@ class Circuit {
                 if (this.selectedWire) {
                     this.deleteWire(this.selectedWire);
                 }
+            } else if (e.key === 'Escape') {
+                this.cleanupDragging();
             }
         });
-    }    setupTrashZone() {
+    }
+
+    setupTrashZone() {
         const trashZone = document.getElementById('trashZone');
-
-        this.canvas.addEventListener('dragstart', (e) => {
-            if (this.selectedComponent) {
-                e.stopPropagation();
-            }
-        });
-
-        this.canvas.addEventListener('dragend', () => {
-            const dragGhost = document.getElementById('dragGhost');
-            if (dragGhost && dragGhost.parentNode) {
-                dragGhost.parentNode.removeChild(dragGhost);
-            }
-            trashZone.classList.remove('active');
-        });
 
         trashZone.addEventListener('dragover', (e) => {
             e.preventDefault();
@@ -125,22 +118,26 @@ class Circuit {
             e.preventDefault();
             if (this.selectedComponent) {
                 const component = this.selectedComponent;
-                
-                // 创建删除动画
                 this.createDeleteAnimation(component);
-
-                // 延迟删除组件
                 setTimeout(() => {
                     this.deleteComponent(component);
-                    trashZone.classList.remove('active');
                 }, 300);
             }
-            // 确保删除拖拽时的虚影
-            const dragGhost = document.getElementById('dragGhost');
-            if (dragGhost && dragGhost.parentNode) {
-                dragGhost.parentNode.removeChild(dragGhost);
-            }
+            this.cleanupDragging();
+            trashZone.classList.remove('active');
         });
+    }
+
+    cleanupDragging() {
+        const dragGhost = document.getElementById('dragGhost');
+        if (dragGhost && dragGhost.parentNode) {
+            dragGhost.parentNode.removeChild(dragGhost);
+        }
+        const trashZone = document.getElementById('trashZone');
+        trashZone.classList.remove('active');
+        this.dragging = false;
+        this.selectedComponent = null;
+        this.canvas.style.cursor = 'default';
     }
 
     createDeleteAnimation(component) {
@@ -179,7 +176,6 @@ class Circuit {
 
         this.components.push(component);
         this.draw();
-        this.emitCircuitUpdate();
     }
 
     handleMouseDown(x, y) {
@@ -193,7 +189,6 @@ class Circuit {
             return;
         }
 
-        // 检查是否点击了线
         this.selectedWire = this.findWireAt(x, y);
         if (this.selectedWire) {
             this.selectedComponent = null;
@@ -207,21 +202,18 @@ class Circuit {
                 const dy = y - component.y;
                 const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
                 
-                if (distanceFromCenter <= 10) {  // 如果点击在中心区域
+                if (distanceFromCenter <= 10) {
                     component.state = !component.state;
                     this.calculateCircuitState();
                     this.draw();
-                    this.emitCircuitUpdate();
-                } else {  // 如果点击在外围区域，允许拖动
+                } else {
                     this.selectedComponent = component;
                     this.dragging = true;
-                    // 设置组件为可拖动
                     this.startDragging(component, x, y);
                 }
             } else {
                 this.selectedComponent = component;
                 this.dragging = true;
-                // 设置组件为可拖动
                 this.startDragging(component, x, y);
             }
             this.selectedWire = null;
@@ -232,6 +224,9 @@ class Circuit {
     }
 
     startDragging(component, x, y) {
+        // 首先清理可能存在的旧虚影
+        this.cleanupDragging();
+
         // 创建一个可视化的拖拽元素
         const dragElement = document.createElement('div');
         dragElement.id = 'dragGhost';
@@ -256,13 +251,11 @@ class Circuit {
 
         document.body.appendChild(dragElement);
 
-        // 更新拖拽元素位置
         const updateDragPosition = (e) => {
             dragElement.style.left = e.clientX - 20 + 'px';
             dragElement.style.top = e.clientY - 20 + 'px';
         };
 
-        // 添加移动和结束拖拽的事件监听器
         const handleDragMove = (e) => {
             updateDragPosition(e);
             const trashZone = document.getElementById('trashZone');
@@ -282,24 +275,28 @@ class Circuit {
             
             if (e.clientX >= trashRect.left && e.clientX <= trashRect.right &&
                 e.clientY >= trashRect.top && e.clientY <= trashRect.bottom) {
-                // 删除组件
-                this.deleteComponent(component);
+                this.createDeleteAnimation(component);
+                setTimeout(() => {
+                    this.deleteComponent(component);
+                }, 300);
             }
-
-            // 清理
-            document.removeEventListener('mousemove', handleDragMove);
-            document.removeEventListener('mouseup', handleDragEnd);
-            document.body.removeChild(dragElement);
-            trashZone.classList.remove('active');
+            
+            this.cleanupDragging();
         };
 
         document.addEventListener('mousemove', handleDragMove);
         document.addEventListener('mouseup', handleDragEnd);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.cleanupDragging();
+            }
+        });
+
         updateDragPosition({ clientX: x, clientY: y });
+        this.canvas.style.cursor = 'grabbing';
     }
 
     handleMouseMove(x, y) {
-        const canvas = this.canvas;
         if (this.dragging && this.selectedComponent) {
             const dx = x - this.selectedComponent.x;
             const dy = y - this.selectedComponent.y;
@@ -325,11 +322,11 @@ class Circuit {
             this.draw();
             
             const port = this.findPortAt(x, y);
-            canvas.style.cursor = port ? 'pointer' : 'crosshair';
+            this.canvas.style.cursor = port ? 'pointer' : 'crosshair';
         } else {
             const port = this.findPortAt(x, y);
             const wire = this.findWireAt(x, y);
-            canvas.style.cursor = port || wire ? 'pointer' : 'default';
+            this.canvas.style.cursor = port || wire ? 'pointer' : 'default';
         }
     }
 
@@ -338,43 +335,121 @@ class Circuit {
             const endPort = this.findPortAt(this.tempWireEnd.x, this.tempWireEnd.y);
             this.connectWire(endPort);
         }
-        this.dragging = false;
+        this.cleanupDragging();
+    }
+
+    // ... 其余方法保持不变 ...
+
+    calculateCircuitState() {
+        this.components.forEach(component => {
+            if (component.type !== 'INPUT') {
+                component.state = null;
+            }
+        });
+
+        const processed = new Set();
+        const stack = [...this.components.filter(c => c.type === 'INPUT')];
+        
+        while (stack.length > 0) {
+            const current = stack.pop();
+            if (processed.has(current)) continue;
+            
+            const outputs = this.wires
+                .filter(w => w.start.component === current)
+                .map(w => w.end.component);
+                
+            for (const output of outputs) {
+                const state = this.calculateComponentState(output);
+                if (state !== null) {
+                    output.state = state;
+                    stack.push(output);
+                }
+            }
+            
+            processed.add(current);
+        }
+    }
+
+    calculateComponentState(component) {
+        if (component.type === 'INPUT') {
+            return component.state;
+        }
+
+        const inputs = [];
+        this.wires.forEach(wire => {
+            if (wire.end.component === component) {
+                inputs[wire.end.inputIndex] = wire.start.component.state;
+            }
+        });
+        
+        switch (component.type) {
+            case 'AND':
+                return inputs.length === 2 && inputs[0] !== null && inputs[1] !== null ? 
+                       (inputs[0] && inputs[1]) : null;
+            case 'OR':
+                return inputs.length === 2 && inputs[0] !== null && inputs[1] !== null ? 
+                       (inputs[0] || inputs[1]) : null;
+            case 'NOT':
+                return inputs.length === 1 && inputs[0] !== null ? 
+                       !inputs[0] : null;
+            case 'OUTPUT':
+                return inputs.length === 1 && inputs[0] !== null ? 
+                       inputs[0] : null;
+            default:
+                return null;
+        }
+    }
+
+    deleteComponent(component) {
+        this.wires = this.wires.filter(wire => 
+            wire.start.component !== component && 
+            wire.end.component !== component
+        );
+        
+        const index = this.components.indexOf(component);
+        if (index > -1) {
+            this.components.splice(index, 1);
+        }
+        
         this.selectedComponent = null;
-        this.tempWireEnd = null;
-        // 删除这行，不再设置画布的 draggable 属性
-        this.emitCircuitUpdate();
+        this.draw();
+    }
+
+    deleteWire(wire) {
+        const index = this.wires.indexOf(wire);
+        if (index > -1) {
+            this.wires.splice(index, 1);
+        }
+        this.selectedWire = null;
+        this.draw();
     }
 
     findComponentAt(x, y) {
         return this.components.find(component => {
             const dx = x - component.x;
             const dy = y - component.y;
-            return (dx * dx + dy * dy) < 400; // 20px radius
+            return (dx * dx + dy * dy) < 400;
         });
-    }    findPortAt(x, y) {
+    }
+
+    findPortAt(x, y) {
         for (const component of this.components) {
-            // 检查输入端口
-            if (component.type !== 'INPUT') { // 输入组件没有输入端口
+            if (component.type !== 'INPUT') {
                 if (component.type === 'NOT') {
-                    // 非门只有一个输入端口
                     const portX = component.x - 25;
                     const portY = component.y;
                     if (Math.hypot(x - portX, y - portY) < 5) {
                         return { component, type: 'input', index: 0, x: portX, y: portY };
                     }
                 } else if (component.type === 'AND' || component.type === 'OR') {
-                    // 与门和或门有两个输入端口
                     const portX = component.x - 25;
-                    // 上方输入端口
                     if (Math.hypot(x - portX, y - (component.y - 15)) < 5) {
                         return { component, type: 'input', index: 0, x: portX, y: component.y - 15 };
                     }
-                    // 下方输入端口
                     if (Math.hypot(x - portX, y - (component.y + 15)) < 5) {
                         return { component, type: 'input', index: 1, x: portX, y: component.y + 15 };
                     }
                 } else if (component.type === 'OUTPUT') {
-                    // 输出节点只有一个输入端口
                     const portX = component.x - 19;
                     const portY = component.y;
                     if (Math.hypot(x - portX, y - portY) < 5) {
@@ -383,8 +458,7 @@ class Circuit {
                 }
             }
 
-            // 检查输出端口
-            if (component.type !== 'OUTPUT') { // 输出组件没有输出端口
+            if (component.type !== 'OUTPUT') {
                 const outPortX = component.x + 25;
                 const outPortY = component.y;
                 if (Math.hypot(x - outPortX, y - outPortY) < 5) {
@@ -393,7 +467,9 @@ class Circuit {
             }
         }
         return null;
-    }    connectWire(endPort) {
+    }
+
+    connectWire(endPort) {
         if (!this.wireStart || !endPort) {
             this.wireStart = null;
             this.tempWireEnd = null;
@@ -401,7 +477,6 @@ class Circuit {
             return;
         }
 
-        // 检查是否试图连接同一个组件的端口
         if (this.wireStart.component === endPort.component) {
             this.wireStart = null;
             this.tempWireEnd = null;
@@ -409,13 +484,11 @@ class Circuit {
             return;
         }
         
-        // 移除可能存在的旧连接
         this.wires = this.wires.filter(wire => {
             return !(wire.end.component === endPort.component && 
                     wire.end.inputIndex === endPort.index);
         });
         
-        // 检查连接类型是否正确（输出到输入）
         if (this.wireStart.type === 'output' && endPort.type === 'input') {
             this.wires.push({
                 start: {
@@ -446,34 +519,31 @@ class Circuit {
             });
         }
         
-        // 清理连线状态
         this.wireStart = null;
         this.tempWireEnd = null;
         
-        // 更新状态和显示
         this.calculateCircuitState();
         this.draw();
-    }    draw() {
+    }
+
+    draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // 绘制连线
         this.wires.forEach(wire => {
             this.drawWire(wire);
         });
 
-        // 绘制临时连线
         if (this.wireStart && this.tempWireEnd) {
             this.ctx.beginPath();
             this.ctx.moveTo(this.wireStart.x, this.wireStart.y);
             this.ctx.lineTo(this.tempWireEnd.x, this.tempWireEnd.y);
-            this.ctx.setLineDash([5, 3]); // 设置虚线样式
+            this.ctx.setLineDash([5, 3]);
             this.ctx.strokeStyle = '#666';
             this.ctx.stroke();
-            this.ctx.setLineDash([]); // 恢复实线
+            this.ctx.setLineDash([]);
             this.ctx.strokeStyle = '#000';
         }
         
-        // 绘制组件
         this.components.forEach(component => {
             this.drawComponent(component);
         });
@@ -496,35 +566,31 @@ class Circuit {
                 this.drawIO(component);
                 break;
         }
-        this.ctx.stroke();
-    }    drawANDGate(component) {
+    }
+
+    drawANDGate(component) {
         const x = component.x;
         const y = component.y;
         
-        // 绘制正方形主体
-        this.ctx.beginPath();
         this.ctx.rect(x - 20, y - 20, 40, 40);
         this.ctx.stroke();
 
-        // 绘制 & 符号
         this.ctx.fillStyle = '#000000';
         this.ctx.font = '24px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText('&', x, y);
 
-        // 绘制输入接口
         this.ctx.beginPath();
-        this.ctx.arc(x - 25, y - 15, 4, 0, Math.PI * 2); // 输入1
-        this.ctx.arc(x - 25, y + 15, 4, 0, Math.PI * 2); // 输入2
-        this.ctx.fillStyle = '#4CAF50';
+        this.ctx.arc(x - 25, y - 15, 4, 0, Math.PI * 2);
+        this.ctx.arc(x - 25, y + 15, 4, 0, Math.PI * 2);
+        this.ctx.fillStyle = component.inputs[0] ? '#4CAF50' : '#f44336';
         this.ctx.fill();
         this.ctx.stroke();
 
-        // 绘制输出接口
         this.ctx.beginPath();
         this.ctx.arc(x + 25, y, 4, 0, Math.PI * 2);
-        this.ctx.fillStyle = '#f44336';
+        this.ctx.fillStyle = component.state ? '#4CAF50' : '#f44336';
         this.ctx.fill();
         this.ctx.stroke();
     }
@@ -533,30 +599,25 @@ class Circuit {
         const x = component.x;
         const y = component.y;
         
-        // 绘制正方形主体
-        this.ctx.beginPath();
         this.ctx.rect(x - 20, y - 20, 40, 40);
         this.ctx.stroke();
 
-        // 绘制 >=1 符号
         this.ctx.fillStyle = '#000000';
         this.ctx.font = '16px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText('≥1', x, y);
 
-        // 绘制输入接口
         this.ctx.beginPath();
-        this.ctx.arc(x - 25, y - 15, 4, 0, Math.PI * 2); // 输入1
-        this.ctx.arc(x - 25, y + 15, 4, 0, Math.PI * 2); // 输入2
-        this.ctx.fillStyle = '#4CAF50';
+        this.ctx.arc(x - 25, y - 15, 4, 0, Math.PI * 2);
+        this.ctx.arc(x - 25, y + 15, 4, 0, Math.PI * 2);
+        this.ctx.fillStyle = component.inputs[0] ? '#4CAF50' : '#f44336';
         this.ctx.fill();
         this.ctx.stroke();
 
-        // 绘制输出接口
         this.ctx.beginPath();
         this.ctx.arc(x + 25, y, 4, 0, Math.PI * 2);
-        this.ctx.fillStyle = '#f44336';
+        this.ctx.fillStyle = component.state ? '#4CAF50' : '#f44336';
         this.ctx.fill();
         this.ctx.stroke();
     }
@@ -565,32 +626,27 @@ class Circuit {
         const x = component.x;
         const y = component.y;
         
-        // 绘制正方形主体
-        this.ctx.beginPath();
         this.ctx.rect(x - 20, y - 20, 40, 40);
         this.ctx.stroke();
 
-        // 绘制 1 符号
         this.ctx.fillStyle = '#000000';
         this.ctx.font = '24px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText('1', x, y);
 
-        // 绘制输入接口
         this.ctx.beginPath();
         this.ctx.arc(x - 25, y, 4, 0, Math.PI * 2);
-        this.ctx.fillStyle = '#4CAF50';
+        this.ctx.fillStyle = component.inputs[0] ? '#4CAF50' : '#f44336';
         this.ctx.fill();
         this.ctx.stroke();
 
-        // 绘制输出圆圈和接口
         this.ctx.beginPath();
-        this.ctx.arc(x + 25, y, 8, 0, Math.PI * 2); // 空心圆
+        this.ctx.arc(x + 25, y, 8, 0, Math.PI * 2);
         this.ctx.stroke();
         this.ctx.beginPath();
-        this.ctx.arc(x + 25, y, 4, 0, Math.PI * 2); // 接口点
-        this.ctx.fillStyle = '#f44336';
+        this.ctx.arc(x + 25, y, 4, 0, Math.PI * 2);
+        this.ctx.fillStyle = component.state ? '#4CAF50' : '#f44336';
         this.ctx.fill();
         this.ctx.stroke();
     }
@@ -599,39 +655,35 @@ class Circuit {
         const x = component.x;
         const y = component.y;
         
-        // 绘制主体
         this.ctx.beginPath();
         this.ctx.arc(x, y, 15, 0, Math.PI * 2);
         this.ctx.fillStyle = component.state ? '#4CAF50' : '#f44336';
         this.ctx.fill();
         this.ctx.stroke();
 
-        // 绘制接口点
         this.ctx.beginPath();
         if (component.type === 'INPUT') {
-            // 输入节点只有输出接口
             this.ctx.arc(x + 19, y, 4, 0, Math.PI * 2);
-            this.ctx.fillStyle = '#f44336';
+            this.ctx.fillStyle = component.state ? '#4CAF50' : '#f44336';
         } else {
-            // 输出节点只有输入接口
             this.ctx.arc(x - 19, y, 4, 0, Math.PI * 2);
-            this.ctx.fillStyle = '#4CAF50';
+            this.ctx.fillStyle = component.inputs[0] ? '#4CAF50' : '#f44336';
         }
         this.ctx.fill();
         this.ctx.stroke();
 
-        // 绘制标签
         this.ctx.fillStyle = '#ffffff';
         this.ctx.font = '12px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText(component.type === 'INPUT' ? 'IN' : 'OUT', x, y);
-    }    drawWire(wire) {
+    }
+
+    drawWire(wire) {
         this.ctx.beginPath();
         this.ctx.moveTo(wire.start.x, wire.start.y);
         this.ctx.lineTo(wire.end.x, wire.end.y);
         
-        // 如果线被选中，使用不同的样式
         if (wire === this.selectedWire) {
             this.ctx.strokeStyle = '#0066cc';
             this.ctx.lineWidth = 2;
@@ -641,170 +693,8 @@ class Circuit {
         }
         
         this.ctx.stroke();
-        this.ctx.strokeStyle = '#000000';  // 恢复默认颜色
-        this.ctx.lineWidth = 1;  // 恢复默认线宽
-    }
-
-    calculateCircuitState() {
-        // 重置所有非输入组件的状态
-        this.components.forEach(component => {
-            if (component.type !== 'INPUT') {
-                component.state = null;
-            }
-        });
-
-        // 拓扑排序计算
-        const processed = new Set();
-        const stack = [...this.components.filter(c => c.type === 'INPUT')];
-        
-        while (stack.length > 0) {
-            const current = stack.pop();
-            if (processed.has(current)) continue;
-            
-            const outputs = this.wires
-                .filter(w => w.start.component === current)
-                .map(w => w.end.component);
-                
-            for (const output of outputs) {
-                const state = this.calculateComponentState(output);
-                if (state !== null) {
-                    output.state = state;
-                    stack.push(output);
-                }
-            }
-            
-            processed.add(current);
-        }
-    }
-
-    calculateComponentState(component) {
-        if (component.type === 'INPUT') {
-            return component.state;
-        }
-
-        // 获取连接到该组件的所有输入线
-        const inputs = [];
-        let connectedWires = 0;
-        
-        this.wires.forEach(wire => {
-            if (wire.end.component === component) {
-                connectedWires++;
-                const sourceComponent = wire.start.component;
-                console.log(`${component.type} input[${wire.end.inputIndex}] = ${sourceComponent.state} (from ${sourceComponent.type})`);
-                inputs[wire.end.inputIndex] = sourceComponent.state;
-            }
-        });
-        
-        console.log(`${component.type} has ${connectedWires} connected wires, inputs:`, inputs);
-        
-        // 根据组件类型计算输出
-        let result = null;
-        switch (component.type) {
-            case 'AND':
-                // 与门需要两个输入都为true
-                result = inputs.length === 2 && inputs[0] !== null && inputs[1] !== null ? 
-                       (inputs[0] && inputs[1]) : null;
-                break;
-                
-            case 'OR':
-                // 或门只要有一个输入为true
-                result = inputs.length === 2 && inputs[0] !== null && inputs[1] !== null ? 
-                       (inputs[0] || inputs[1]) : null;
-                break;
-                
-            case 'NOT':
-                // 非门取反
-                result = inputs.length === 1 && inputs[0] !== null ? 
-                       !inputs[0] : null;
-                break;
-                
-            case 'OUTPUT':
-                // 输出节点直接传递输入值
-                result = inputs.length === 1 && inputs[0] !== null ? 
-                       inputs[0] : null;
-                break;
-                
-            default:
-                result = null;
-        }
-
-        // 输出计算结果
-        console.log('Component state calculated:', result);
-        return result;
-    }
-
-    emitCircuitUpdate() {
-        this.calculateCircuitState(); // 在发送更新前计算电路状态
-        this.socket.emit('circuit_update', {
-            components: this.components,
-            wires: this.wires
-        });
-    }
-
-    updateCircuitState(data) {
-        // 深度复制组件状态
-        const componentMap = new Map();
-        this.components.forEach(comp => componentMap.set(comp, comp));
-        
-        data.components.forEach(newComp => {
-            const existingComp = this.components.find(c => 
-                c.type === newComp.type && 
-                c.x === newComp.x && 
-                c.y === newComp.y
-            );
-            if (existingComp) {
-                existingComp.state = newComp.state;
-            }
-        });
-        
-        // 更新线路并保持引用
-        this.wires = data.wires.map(wire => {
-            const start = this.components.find(c => 
-                c.type === wire.start.component.type && 
-                c.x === wire.start.component.x && 
-                c.y === wire.start.component.y
-            );
-            const end = this.components.find(c => 
-                c.type === wire.end.component.type && 
-                c.x === wire.end.component.x && 
-                c.y === wire.end.component.y
-            );
-            return {
-                start: { ...wire.start, component: start },
-                end: { ...wire.end, component: end }
-            };
-        });
-        
-        this.calculateCircuitState();
-        this.draw();
-    }
-
-    deleteComponent(component) {
-        // 删除与该组件相关的所有连线
-        this.wires = this.wires.filter(wire => 
-            wire.start.component !== component && 
-            wire.end.component !== component
-        );
-        
-        // 删除组件
-        const index = this.components.indexOf(component);
-        if (index > -1) {
-            this.components.splice(index, 1);
-        }
-        
-        this.selectedComponent = null;
-        this.draw();
-        this.emitCircuitUpdate();
-    }
-
-    deleteWire(wire) {
-        const index = this.wires.indexOf(wire);
-        if (index > -1) {
-            this.wires.splice(index, 1);
-        }
-        this.selectedWire = null;
-        this.draw();
-        this.emitCircuitUpdate();
+        this.ctx.strokeStyle = '#000000';
+        this.ctx.lineWidth = 1;
     }
 
     findWireAt(x, y) {
@@ -813,7 +703,6 @@ class Circuit {
             const dy = wire.end.y - wire.start.y;
             const length = Math.sqrt(dx * dx + dy * dy);
             
-            // 计算点到线段的距离
             const dot = ((x - wire.start.x) * dx + (y - wire.start.y) * dy) / (length * length);
             if (dot < 0 || dot > 1) return false;
             
