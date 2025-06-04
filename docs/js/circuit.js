@@ -8,11 +8,14 @@ class Circuit {
         this.dragging = false;
         this.wireStart = null;
         this.selectedWire = null;
+        this.dragStartX = 0;
+        this.dragStartY = 0;
 
         this.initializeCanvas();
         this.setupEventListeners();
         this.setupKeyboardEvents();
         this.setupTrashZone();
+        this.draw();
     }
 
     initializeCanvas() {
@@ -27,35 +30,34 @@ class Circuit {
     }
 
     setupEventListeners() {
-        // 组件拖拽        const gateItems = document.querySelectorAll('.gate-item');
+        // 组件拖拽
+        const gateItems = document.querySelectorAll('.gate-item');
         gateItems.forEach(item => {
             item.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('type', item.dataset.type);
-                e.dataTransfer.effectAllowed = 'copy';
+                // 记录初始位置，用于计算放置位置
+                const rect = e.target.getBoundingClientRect();
+                this.dragStartX = e.clientX - rect.left;
+                this.dragStartY = e.clientY - rect.top;
                 
-                // 创建拖拽时的预览图像
-                const dragIcon = document.createElement('div');
-                dragIcon.className = 'gate-item';
-                dragIcon.textContent = item.textContent;
-                dragIcon.style.backgroundColor = '#fff';
-                dragIcon.style.border = '1px solid #000';
-                dragIcon.style.width = '40px';
-                dragIcon.style.height = '40px';
-                dragIcon.style.lineHeight = '40px';
-                dragIcon.style.textAlign = 'center';
-                document.body.appendChild(dragIcon);
-                e.dataTransfer.setDragImage(dragIcon, 20, 20);
-                setTimeout(() => document.body.removeChild(dragIcon), 0);
+                // 设置拖拽数据和效果
+                e.dataTransfer.setData('text/plain', item.dataset.type);
+                e.dataTransfer.effectAllowed = 'copy';
             });
-        });// 画布事件
+        });
+
+        // 画布拖拽事件
         this.canvas.addEventListener('dragover', (e) => {
             e.preventDefault();
-            e.dataTransfer.dropEffect = 'copy';  // 显示可以放置的光标
+            e.dataTransfer.dropEffect = 'copy';
         });
 
         this.canvas.addEventListener('drop', (e) => {
             e.preventDefault();
-            const type = e.dataTransfer.getData('type');
+            e.stopPropagation();
+            
+            const type = e.dataTransfer.getData('text/plain');
+            if (!type) return; // 如果没有有效的类型数据，直接返回
+            
             const rect = this.canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;

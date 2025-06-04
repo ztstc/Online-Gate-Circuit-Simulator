@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>门电路模拟器</title>
-    <link rel="stylesheet" href="css/style.css">
-    <style>
+    <link rel="stylesheet" href="css/style.css">    <style>
         * {
             margin: 0;
             padding: 0;
@@ -13,6 +12,21 @@
         }
         body {
             overflow: hidden;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .gate-item {
+            cursor: -webkit-grab;
+            cursor: grab;
+            touch-action: none;
+        }
+        .gate-item:active {
+            cursor: -webkit-grabbing;
+            cursor: grabbing;
+        }
+        #circuitCanvas {
+            touch-action: none;
         }
     </style>
 </head>
@@ -63,10 +77,10 @@
                 </div>
                 <div class="trash-text">拖放此处删除组件</div>
             </div>
-        </div>
-        <div class="canvas-container">
+        </div>        <div class="canvas-container">
             <canvas id="circuitCanvas"></canvas>
-        </div>    </div>
+        </div>
+    </div>
 
     <script src="js/circuit.js"></script>
 </body>
